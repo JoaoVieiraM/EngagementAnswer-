@@ -1,0 +1,9 @@
+{
+  "keyword": "MATERIAL",
+  "materialUrl": "https://exemplo.com/seu-material.pdf",
+  "openingMessage": "Oi! Vi seu comentário. Antes de liberar o material, confirme que você já segue este perfil.",
+  "materialMessage": "Perfeito! Aqui está seu material: {materialUrl}",
+  "notFollowerMessage": "Para receber o material, siga o perfil e responda CONFIRMAR nesta conversa.",
+  "followerCheckMode": "manual_review",
+  "enabled": false
+}
