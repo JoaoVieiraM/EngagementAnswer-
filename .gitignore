@@ -1,2 +1,6 @@
 .env
+.env.local
 data/settings.json
+.neon
+node_modules/
+.env.local
