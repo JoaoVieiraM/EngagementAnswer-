@@ -3,20 +3,11 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getSettings, saveSettings } from './lib/db.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, 'public');
-const dataDir = path.join(root, 'data');
-const settingsPath = path.join(dataDir, 'settings.json');
 loadEnv(path.join(root, '.env'));
-
-const defaults = {
-  keyword: 'MATERIAL', materialUrl: '',
-  openingMessage: 'Oi! Vi seu comentário. Antes de liberar o material, confirme que você já segue este perfil.',
-  materialMessage: 'Perfeito! Aqui está seu material: {materialUrl}',
-  notFollowerMessage: 'Para receber o material, siga o perfil e responda CONFIRMAR nesta conversa.',
-  followerCheckMode: 'manual_review', enabled: false
-};
 
 function loadEnv(file) {
   if (!fs.existsSync(file)) return;
@@ -24,14 +15,6 @@ function loadEnv(file) {
     const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
     if (match && !process.env[match[1]]) process.env[match[1]] = match[2];
   }
-}
-function settings() {
-  if (!fs.existsSync(settingsPath)) return defaults;
-  return { ...defaults, ...JSON.parse(fs.readFileSync(settingsPath, 'utf8')) };
-}
-function saveSettings(next) {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(settingsPath, JSON.stringify({ ...defaults, ...next }, null, 2));
 }
 function json(res, status, body) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
@@ -66,7 +49,7 @@ async function deliverPrivateReply(commentId, message) {
   throw new Error('Envio real não configurado. Consulte README.md antes de desativar DRY_RUN.');
 }
 async function handleComment(comment) {
-  const config = settings();
+  const config = await getSettings();
   if (!config.enabled || !matchesKeyword(comment.text ?? '', config.keyword)) return;
   // Não há checagem pública e confiável de \"segue este perfil\" para contas individuais.
   // Logo, a aplicação nunca libera o material nesta etapa por suposição.
@@ -85,11 +68,11 @@ async function handleWebhook(payload) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { ok: true, dryRun: process.env.DRY_RUN !== 'false' });
-  if (req.method === 'GET' && url.pathname === '/api/settings') return json(res, 200, settings());
+  if (req.method === 'GET' && url.pathname === '/api/settings') return json(res, 200, await getSettings());
   if (req.method === 'PUT' && url.pathname === '/api/settings') {
     const next = JSON.parse((await rawBody(req)).toString('utf8'));
     if (!next.keyword?.trim()) return json(res, 422, { error: 'Informe uma palavra-chave.' });
-    saveSettings(next); return json(res, 200, settings());
+    return json(res, 200, await saveSettings(next));
   }
   if (req.method === 'GET' && url.pathname === '/webhook') {
     if (url.searchParams.get('hub.verify_token') !== process.env.WEBHOOK_VERIFY_TOKEN) return res.writeHead(403).end();

@@ -10,7 +10,7 @@
     "pg": "^8.23.1"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "node --env-file=.env.local server.js",
     "build": "node --check api/health.js && node --check api/settings.js && node --check api/webhook.js && node --check lib/auth.js && node --check lib/db.js",
     "test:db": "node --env-file=.env.local scripts/test-db.js"
   }
